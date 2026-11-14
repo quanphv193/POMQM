@@ -1,0 +1,511 @@
+<title>Audit OM/QM Lite</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~880px) — verdict → coverage matrix → UX findings → proposed pane → roadmap. Ledger-paper neutrals tinted toward the Excel green. */
+:root {
+	--bg: #f7f9f8;
+	--surface: #ffffff;
+	--ink: #17201c;
+	--muted: #5b6862;
+	--line: #dbe3df;
+	--grid: #eef3f0;
+	--accent: #1d6b48;
+	--accent-soft: #e3f1ea;
+	--ok: #1d7a4c;
+	--ok-bg: #e2f3e9;
+	--part: #9a6400;
+	--part-bg: #fbf0d9;
+	--miss: #6b5560;
+	--miss-bg: #f1eaee;
+	--hi: #b3261e;
+	--hi-bg: #fbe7e5;
+	--mid: #9a6400;
+	--mid-bg: #fbf0d9;
+	--lo: #3d5a80;
+	--lo-bg: #e6edf6;
+	--display: "Be Vietnam Pro", "Inter", system-ui, sans-serif;
+	--body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #111613; --surface: #171e1a; --ink: #e5ece8; --muted: #9aa8a1; --line: #2a3530; --grid: #1c2420;
+		--accent: #5cc392; --accent-soft: #1b3127; --ok: #6fd3a0; --ok-bg: #173126; --part: #e7b65a; --part-bg: #352a14;
+		--miss: #c3aab6; --miss-bg: #2b2228; --hi: #ff8a80; --hi-bg: #3a1d1b; --mid: #e7b65a; --mid-bg: #352a14; --lo: #9bb7dc; --lo-bg: #1d2735;
+		color-scheme: dark;
+	}
+}
+:root[data-theme="dark"] {
+	--bg: #111613; --surface: #171e1a; --ink: #e5ece8; --muted: #9aa8a1; --line: #2a3530; --grid: #1c2420;
+	--accent: #5cc392; --accent-soft: #1b3127; --ok: #6fd3a0; --ok-bg: #173126; --part: #e7b65a; --part-bg: #352a14;
+	--miss: #c3aab6; --miss-bg: #2b2228; --hi: #ff8a80; --hi-bg: #3a1d1b; --mid: #e7b65a; --mid-bg: #352a14; --lo: #9bb7dc; --lo-bg: #1d2735;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); }
+.wrap { max-width: 920px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(28px, 4.4vw, 40px); line-height: 1.15; font-weight: 700; }
+h2 { font-size: 24px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+section { display: grid; gap: 18px; min-width: 0; }
+.lede { font-size: 17px; color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+
+/* header */
+header { display: grid; gap: 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: 13px; }
+.meta span b { color: var(--ink); font-weight: 600; }
+
+/* coverage stats */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stat { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; }
+.stat .n { font: 600 28px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.stat .l { font-size: 13px; color: var(--muted); }
+.bar { height: 10px; border-radius: 99px; background: var(--grid); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+.verdict { background: var(--accent-soft); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; }
+.verdict ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+
+/* pills */
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--body); padding: 5px 9px; border-radius: 99px; white-space: nowrap; }
+.pill.co { color: var(--ok); background: var(--ok-bg); }
+.pill.mot-phan { color: var(--part); background: var(--part-bg); }
+.pill.chua { color: var(--miss); background: var(--miss-bg); }
+.pill.cao { color: var(--hi); background: var(--hi-bg); }
+.pill.tb { color: var(--mid); background: var(--mid-bg); }
+.pill.thap { color: var(--lo); background: var(--lo-bg); }
+
+/* matrix */
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 12px; border-radius: 99px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip:focus-visible, summary:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#q { flex: 1 1 200px; min-width: 0; font: 14px var(--body); padding: 7px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.mods { display: grid; gap: 8px; }
+details.mod { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+details.mod > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 14px; align-items: center; padding: 12px 16px; }
+details.mod > summary::-webkit-details-marker { display: none; }
+.mname { display: grid; gap: 2px; min-width: 0; }
+.mname b { font-weight: 600; }
+.mname small { color: var(--muted); font-size: 12.5px; }
+.mright { display: flex; gap: 10px; align-items: center; }
+.mini { width: 88px; height: 6px; border-radius: 99px; background: var(--grid); overflow: hidden; display: flex; }
+.mini i { height: 100%; }
+.count { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+.subs { border-top: 1px solid var(--line); }
+.sub { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 9px 16px; align-items: start; }
+.sub + .sub { border-top: 1px dashed var(--line); }
+.sub .t { font-size: 14px; }
+.sub .n { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.src { font: 500 11px var(--mono); color: var(--muted); margin-left: 6px; }
+.empty { padding: 18px; color: var(--muted); text-align: center; border: 1px dashed var(--line); border-radius: 10px; }
+
+/* findings */
+.findings { display: grid; gap: 10px; }
+.f { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; }
+.f header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.f header h3 { flex: 1 1 260px; }
+.f dl { margin: 0; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 12px; font-size: 14px; }
+.f dt { color: var(--muted); }
+.f dd { margin: 0; }
+
+/* mockups */
+.mock-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.mock-cap { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.pane { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; font-size: 13px; display: flex; flex-direction: column; min-height: 520px; box-shadow: 0 1px 0 var(--line); }
+.pane .chrome { background: var(--grid); border-bottom: 1px solid var(--line); padding: 8px 12px; font-weight: 600; display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.pane .body { padding: 12px; display: grid; gap: 10px; align-content: start; flex: 1; }
+.pane .search { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--muted); }
+.pane .grp { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.pane .item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.pane .item small { color: var(--muted); font-family: var(--mono); }
+.pane .item.new::after { content: "mới"; font-size: 10.5px; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 99px; }
+.pane .crumb { color: var(--muted); font-size: 12px; }
+.pane .crumb b { color: var(--ink); }
+.pane .seg { display: grid; grid-template-columns: 1fr 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.pane .seg span { padding: 6px; text-align: center; color: var(--muted); }
+.pane .seg span.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.pane .field { display: grid; gap: 4px; }
+.pane .field label { color: var(--muted); font-size: 12px; }
+.pane .inp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; display: flex; justify-content: space-between; }
+.pane .card { background: var(--grid); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.pane .kv { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
+.pane .kv b { font-family: var(--mono); font-weight: 500; }
+.pane .foot { border-top: 1px solid var(--line); padding: 10px 12px; display: grid; gap: 6px; }
+.pane .btn { text-align: center; padding: 8px; border-radius: 8px; font-weight: 600; }
+.pane .btn.p { background: var(--accent); color: var(--surface); }
+.pane .btn.s { border: 1px solid var(--line); }
+.pane .tabs-old { display: flex; border-bottom: 1px solid var(--line); }
+.pane .tabs-old span { flex: 1; text-align: center; padding: 6px 2px; color: var(--muted); font-size: 12px; }
+.pane .tabs-old span.on { color: var(--accent); border-bottom: 2px solid var(--accent); font-weight: 600; }
+.pane .hint { background: var(--grid); border-radius: 8px; padding: 8px; color: var(--muted); font-size: 12px; }
+.note { font-size: 12px; color: var(--muted); }
+.spark { width: 100%; height: 54px; display: block; }
+
+/* sheet preview */
+.sheet-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table.sheet { border-collapse: collapse; font: 13px/1.3 var(--body); font-variant-numeric: tabular-nums; min-width: 560px; width: 100%; }
+.sheet th, .sheet td { border: 1px solid var(--line); padding: 6px 10px; text-align: right; white-space: nowrap; }
+.sheet thead th { background: var(--accent); color: var(--surface); font-weight: 600; text-align: center; }
+.sheet td.lab, .sheet th.lab { text-align: left; }
+.sheet td.in { background: var(--part-bg); }
+.sheet td.out { background: var(--accent-soft); }
+.sheet tr.best td { font-weight: 600; }
+.sheet .rh { background: var(--grid); color: var(--muted); font: 500 11px var(--mono); text-align: center; width: 32px; }
+.sheet td.f { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: left; }
+
+/* roadmap */
+.phases { display: grid; gap: 12px; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px 18px; }
+.phase .tag { display: grid; gap: 4px; align-content: start; }
+.phase .tag b { font: 600 15px var(--display); }
+.phase .tag span { font: 500 12px var(--mono); color: var(--muted); }
+.phase ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.phase p { font-size: 14px; }
+
+footer { font-size: 13px; color: var(--muted); display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 18px; }
+
+@media (max-width: 640px) {
+	.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.phase { grid-template-columns: minmax(0, 1fr); }
+	.f dl { grid-template-columns: minmax(0, 1fr); }
+	.f dt { margin-top: 4px; }
+	.mini { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+	<span class="eyebrow">Audit · 14/11/2026</span>
+	<h1>OM/QM Lite so với Excel OM/QM v5 và POM-QM for Windows</h1>
+	<p class="lede">Đối chiếu từng mô hình con của bản gốc với add-in đang chạy, kèm các vấn đề UX/UI đã thấy khi test thật trong Excel 16.90 trên Mac, và lộ trình để đạt đủ tính năng.</p>
+	<div class="meta">
+		<span>Nguồn gốc: <b>menu module của excelOMQMV5.xlam</b> + <b>POM-QM for Windows manual (v3, 225 trang)</b></span>
+		<span>Bản được audit: <b>OM/QM Lite 0.1.0</b> (~460 dòng mã)</span>
+	</div>
+</header>
+
+<section aria-labelledby="s-cov">
+	<span class="eyebrow">Mức độ bao phủ</span>
+	<h2 id="s-cov">Add-in mới có 4/29 module, phần lớn mô hình con còn thiếu</h2>
+	<div class="stats" id="stats"></div>
+	<div class="bar" id="bigbar" role="img"></div>
+	<div class="legend">
+		<span><i class="dot" style="background:var(--ok)"></i>Có, tương đương bản gốc</span>
+		<span><i class="dot" style="background:var(--part)"></i>Một phần</span>
+		<span><i class="dot" style="background:var(--miss)"></i>Chưa có</span>
+	</div>
+	<div class="verdict">
+		<h3>Kết luận nhanh</h3>
+		<ul>
+			<li>Phần tính toán của 4 module hiện có đúng (đã khớp bài Wyndor, bảng quyết định Render, PERT tính tay), nhưng thiếu các đầu ra mà sinh viên cần: <b>ranging, bảng lặp simplex, đồ thị, Gantt</b>.</li>
+			<li>Kiến trúc 4 tab cố định không mở rộng được lên ~100 mô hình. Cần làm lại <b>điều hướng và cách nhập liệu</b> trước khi thêm module, nếu không mỗi module mới sẽ lặp lại cùng một lỗi UX.</li>
+			<li>Có 2 lỗi mất dữ liệu cần sửa ngay: bấm "Chèn mẫu" hoặc "Tính" lần nữa sẽ <b>xoá sheet cũ cùng tên mà không hỏi</b>.</li>
+		</ul>
+	</div>
+</section>
+
+<section aria-labelledby="s-mat">
+	<span class="eyebrow">Ma trận tính năng</span>
+	<h2 id="s-mat">Từng module và mô hình con</h2>
+	<p class="muted">Danh mục lấy theo menu của Excel OM/QM v5. Mục có nhãn <span class="mono">POM-QM</span> chỉ có trong bản Windows. Bấm vào module để xem chi tiết.</p>
+	<div class="controls" role="group" aria-label="Lọc theo trạng thái">
+		<button class="chip" data-f="all" aria-pressed="true">Tất cả</button>
+		<button class="chip" data-f="co" aria-pressed="false">Có</button>
+		<button class="chip" data-f="mot-phan" aria-pressed="false">Một phần</button>
+		<button class="chip" data-f="chua" aria-pressed="false">Chưa có</button>
+		<input id="q" type="search" placeholder="Tìm mô hình, ví dụ: EOQ, M/M/s, Vogel" aria-label="Tìm mô hình">
+	</div>
+	<div class="mods" id="mods"></div>
+</section>
+
+<section aria-labelledby="s-ux">
+	<span class="eyebrow">UX/UI</span>
+	<h2 id="s-ux">15 vấn đề thấy được khi dùng thật</h2>
+	<p class="muted">Bằng chứng lấy từ lần test trong Excel ngày 14/11 và từ mã nguồn <span class="mono">taskpane.js</span>.</p>
+	<div class="findings" id="findings"></div>
+</section>
+
+<section aria-labelledby="s-mock">
+	<span class="eyebrow">Đề xuất giao diện</span>
+	<h2 id="s-mock">Task pane mới: danh mục có tìm kiếm, nhập liệu theo bảng tạo sẵn</h2>
+	<p class="muted">Ba khung bên dưới cùng tỉ lệ task pane thật (~320px). Khung đầu là hiện trạng.</p>
+	<div class="mock-row">
+		<div class="mock-cap">
+			<div class="pane" aria-label="Giao diện hiện tại">
+				<div class="chrome"><span>OM/QM Lite</span><span>✕</span></div>
+				<div class="body">
+					<h3 style="font-size:15px">OM/QM Lite</h3>
+					<div class="tabs-old"><span class="on">Dự báo</span><span>QH tuyến<br>tính</span><span>Quyết định</span><span>PERT/CPM</span></div>
+					<div class="hint">Bôi đen cột dữ liệu (1 cột giá trị, hoặc 2 cột: kỳ | giá trị) rồi bấm Tính.</div>
+					<div class="field"><label>Phương pháp</label><div class="inp">Trung bình trượt <span>⌄</span></div></div>
+					<div class="field"><label>Số kỳ (n)</label><div class="inp">3</div></div>
+					<div class="btn s">Chèn dữ liệu mẫu</div>
+					<div class="btn p">Tính dự báo</div>
+					<div class="hint">Dự báo kỳ 13: 16 (MAD 6.481481, MAPE 33.7%)</div>
+				</div>
+			</div>
+			<span><b>Hiện tại.</b> Tiêu đề lặp, tab xuống dòng, phải tự bôi đen, kết quả là một dòng chữ.</span>
+		</div>
+		<div class="mock-cap">
+			<div class="pane" aria-label="Màn hình danh mục đề xuất">
+				<div class="chrome"><span>OM/QM</span><span>✕</span></div>
+				<div class="body">
+					<div class="search">⌕  Tìm mô hình: EOQ, Vogel, M/M/s…</div>
+					<div class="grp">Gần đây</div>
+					<div class="item">Dự báo · Trung bình trượt <small>12 kỳ</small></div>
+					<div class="grp">Hoạch định &amp; dự báo</div>
+					<div class="item">Dự báo <small>12 mô hình</small></div>
+					<div class="item">Hoạch định tổng hợp <small>2</small></div>
+					<div class="grp">Tối ưu hoá</div>
+					<div class="item">Quy hoạch tuyến tính <small>3</small></div>
+					<div class="item">Vận tải · Phân công <small>2</small></div>
+					<div class="grp">Tồn kho &amp; vận hành</div>
+					<div class="item new">Tồn kho <small>10</small></div>
+					<div class="item">Hàng đợi <small>9</small></div>
+				</div>
+				<div class="foot"><span class="note">29 module · nhóm theo chương giáo trình · chuyển bộ menu POM / QM / Tất cả</span></div>
+			</div>
+			<span><b>Màn chính.</b> Thay 4 tab bằng danh mục tìm kiếm được, nhóm theo chương, có mục gần đây.</span>
+		</div>
+		<div class="mock-cap">
+			<div class="pane" aria-label="Màn hình module đề xuất">
+				<div class="chrome"><span>OM/QM</span><span>✕</span></div>
+				<div class="body">
+					<div class="crumb">‹ Danh mục / <b>Dự báo</b></div>
+					<div class="field"><label>Mô hình</label><div class="inp">San bằng hàm mũ có xu hướng <span>⌄</span></div></div>
+					<div class="seg"><span>1 · Tạo bảng</span><span class="on">2 · Giải</span><span>3 · Đồ thị</span></div>
+					<div class="field"><label>α (mức) · β (xu hướng)</label><div class="inp"><span>0,3</span><span>0,4</span></div></div>
+					<div class="card">
+						<div class="kv"><span>Dự báo kỳ 13</span><b>15,8</b></div>
+						<div class="kv"><span>MAD</span><b>3,92</b></div>
+						<div class="kv"><span>MAPE</span><b>18,4 %</b></div>
+						<div class="kv"><span>Tracking signal</span><b>−1,6</b></div>
+						<svg class="spark" viewBox="0 0 240 54" role="img" aria-label="Đường thực tế và dự báo">
+							<polyline fill="none" stroke="var(--muted)" stroke-width="1.5" points="4,46 24,42 44,40 64,34 84,28 104,20 124,14 144,6 164,10 184,30 204,34 224,38"/>
+							<polyline fill="none" stroke="var(--accent)" stroke-width="2" points="64,40 84,36 104,30 124,24 144,17 164,12 184,16 204,26 224,32 236,33"/>
+							<circle cx="236" cy="33" r="3" fill="var(--accent)"/>
+						</svg>
+					</div>
+					<span class="note">Bảng nhập: <span class="mono">tblDuBao</span> trên sheet "Dự báo 1". Đổi số liệu thì bấm Giải lại.</span>
+				</div>
+				<div class="foot">
+					<div class="btn p">Giải</div>
+					<div class="btn s">Mở sheet kết quả</div>
+				</div>
+			</div>
+			<span><b>Màn module.</b> Chọn mô hình bằng dropdown, các bước rõ ràng, kết quả chính hiện ngay trong pane, nút Giải cố định ở đáy.</span>
+		</div>
+	</div>
+
+	<h3 style="margin-top:8px">Sheet kết quả đề xuất</h3>
+	<p class="muted">Ô nhập tô vàng nhạt, ô kết quả tô xanh, công thức Excel thật để sinh viên lần ngược cách tính, số định dạng theo loại.</p>
+	<div class="sheet-wrap">
+		<table class="sheet">
+			<thead><tr><th class="rh"></th><th class="lab">Kỳ</th><th>Thực tế</th><th>Dự báo</th><th>Sai số</th><th>|Sai số|</th><th>% sai số</th><th class="lab">Công thức (cột Dự báo)</th></tr></thead>
+			<tbody>
+				<tr><td class="rh">4</td><td class="lab">3</td><td class="in">13</td><td></td><td></td><td></td><td></td><td class="f"></td></tr>
+				<tr><td class="rh">5</td><td class="lab">4</td><td class="in">16</td><td class="out">11,67</td><td class="out">4,33</td><td class="out">4,33</td><td class="out">27,1 %</td><td class="f">=AVERAGE(C2:C4)</td></tr>
+				<tr><td class="rh">6</td><td class="lab">5</td><td class="in">19</td><td class="out">13,67</td><td class="out">5,33</td><td class="out">5,33</td><td class="out">28,1 %</td><td class="f">=AVERAGE(C3:C5)</td></tr>
+				<tr class="best"><td class="rh">15</td><td class="lab">13 (dự báo)</td><td></td><td class="out">16,00</td><td></td><td></td><td></td><td class="f">=AVERAGE(C12:C14)</td></tr>
+				<tr><td class="rh">17</td><td class="lab">MAD</td><td></td><td class="out">6,48</td><td></td><td></td><td></td><td class="f">=AVERAGE(F5:F14)</td></tr>
+				<tr><td class="rh">18</td><td class="lab">MAPE</td><td></td><td class="out">33,7 %</td><td></td><td></td><td></td><td class="f">=AVERAGE(G5:G14)</td></tr>
+			</tbody>
+		</table>
+	</div>
+</section>
+
+<section aria-labelledby="s-road">
+	<span class="eyebrow">Lộ trình</span>
+	<h2 id="s-road">Làm nền tảng trước, rồi mới thêm module</h2>
+	<div class="phases" id="phases"></div>
+</section>
+
+<footer>
+	<span>Trạng thái "Có" nghĩa là add-in cho ra cùng kết quả chính như bản gốc với bài mẫu. Đầu ra phụ (đồ thị, bảng lặp) được tính riêng trong ghi chú.</span>
+	<span>Bản Windows còn có các tính năng ngoài module (lưu file riêng, in, xuất HTML, dán từ MyOMLab). Trong Excel, phần lưu và in đã có sẵn nên không tính vào ma trận.</span>
+</footer>
+</div>
+
+<script>
+const S = { co: 'Có', 'mot-phan': 'Một phần', chua: 'Chưa có' };
+// [module, nhóm, ghi chú module, [[mô hình con, trạng thái, ghi chú, nguồn?]]]
+const M = [
+	['Dự báo (Forecasting)', 'Hoạch định & dự báo', 'Đã có 5 phương pháp chuỗi thời gian, thiếu đồ thị và tracking signal.', [
+		['Naive', 'co', ''], ['Trung bình trượt', 'co', ''], ['Trung bình trượt có trọng số', 'co', ''],
+		['San bằng hàm mũ', 'co', ''], ['San bằng hàm mũ có xu hướng (α, β)', 'chua', ''],
+		['Xu hướng theo thời gian (trend projection)', 'co', 'Có hệ số góc/chặn; chưa có R², sai số chuẩn.'],
+		['Hồi quy tuyến tính đơn (biến X tuỳ ý)', 'mot-phan', 'Hiện chỉ hồi quy theo kỳ t, chưa nhận cột X.'],
+		['Hồi quy bội', 'chua', ''], ['Chỉ số mùa vụ', 'chua', ''], ['Phân rã nhân', 'chua', ''], ['Phân rã cộng', 'chua', ''],
+		['Regression projector (dự báo từ phương trình có sẵn)', 'chua', ''], ['Phân tích sai số (nhập thực tế + dự báo)', 'chua', 'Sai số đang tính kèm từng phương pháp nhưng chưa có mô hình riêng.'],
+		['Bias, tracking signal, đồ thị thực tế–dự báo', 'chua', 'Đầu ra phụ của bản gốc.'],
+	]],
+	['Hoạch định tổng hợp', 'Hoạch định & dự báo', '', [['6 phương pháp (sản xuất đều, theo nhu cầu, thêm giờ/thuê ngoài, tự nhập)', 'chua', ''], ['Mô hình vận tải cho hoạch định tổng hợp', 'chua', '']]],
+	['Quy hoạch tuyến tính', 'Tối ưu hoá', 'Simplex hai pha đúng; thiếu các màn phụ của bản gốc.', [
+		['Giải LP max/min với ≤, ≥, =', 'co', 'Nghiệm, giá trị mục tiêu, slack/surplus, giá bóng.'],
+		['Phân tích độ nhạy (ranging hệ số mục tiêu, vế phải)', 'chua', ''],
+		['Đồ thị miền khả thi cho bài 2 biến + bảng điểm góc', 'chua', ''],
+		['Bảng lặp simplex (iterations)', 'chua', ''],
+		['Biến không âm tuỳ chọn / biến tự do', 'chua', 'Hiện mọi biến ≥ 0.'],
+	]],
+	['Quy hoạch nguyên & nguyên hỗn hợp', 'Tối ưu hoá', '', [['Nhánh cận (branch & bound), biến nhị phân', 'chua', '']]],
+	['Quy hoạch mục tiêu', 'Tối ưu hoá', '', [['Goal programming có thứ tự ưu tiên', 'chua', '', 'POM-QM']]],
+	['Vận tải', 'Tối ưu hoá', '', [['Góc tây bắc, chi phí nhỏ nhất, Vogel; min/max', 'chua', '']]],
+	['Phân công (Assignment)', 'Tối ưu hoá', '', [['Phương pháp Hungary, min/max', 'chua', '']]],
+	['Mạng (Networks)', 'Tối ưu hoá', '', [['Cây khung nhỏ nhất', 'chua', ''], ['Luồng cực đại', 'chua', ''], ['Đường đi ngắn nhất', 'chua', ''], ['Mạng giải dưới dạng LP', 'chua', '']]],
+	['Phân tích quyết định', 'Ra quyết định', 'Bảng quyết định đủ tiêu chí; thiếu cây quyết định.', [
+		['Bảng quyết định: Maximax, Maximin, Hurwicz, Laplace, minimax regret', 'co', ''],
+		['EMV, EVwPI, EVPI', 'co', ''],
+		['Cây quyết định (nhập dạng bảng)', 'chua', ''],
+		['Cây quyết định vẽ đồ hoạ', 'chua', '', 'POM-QM'],
+		['Bảng quyết định cung–cầu / tồn kho 1 kỳ', 'chua', ''],
+	]],
+	['Lý thuyết trò chơi', 'Ra quyết định', '', [['Trò chơi tổng bằng 0, chiến lược hỗn hợp, đồ thị 2×n', 'chua', '']]],
+	['Markov', 'Ra quyết định', '', [['Xác suất trạng thái sau n bước, trạng thái dừng, trạng thái hấp thụ', 'chua', '']]],
+	['Hoà vốn / Cost-volume', 'Tài chính', '', [['Crossover nhiều phương án', 'chua', ''], ['Hoà vốn chi phí–doanh thu', 'chua', ''], ['Hoà vốn nhiều sản phẩm', 'chua', '']]],
+	['Đầu tư (NPV, IRR)', 'Tài chính', '', [['NPV', 'chua', ''], ['IRR', 'chua', '']]],
+	['Quản lý dự án (PERT/CPM)', 'Dự án', 'AON đủ tính toán cơ bản; thiếu Gantt và các biến thể.', [
+		['Danh sách tiền nhiệm (AON), 1 hoặc 3 thời gian', 'co', 'ES/EF/LS/LF, slack, đường găng, xác suất.'],
+		['Nút đầu–nút cuối (AOA)', 'chua', ''], ['Cho trung bình, độ lệch chuẩn', 'chua', ''], ['Cho trung bình, phương sai', 'chua', ''],
+		['Rút ngắn dự án (crashing)', 'chua', ''], ['Ngân sách (ES/LS budget)', 'chua', ''],
+		['Biểu đồ Gantt, sơ đồ mạng', 'chua', 'Đầu ra phụ.'],
+		['Nhiều đường găng song song', 'mot-phan', 'Hiện chỉ in ra một đường găng.'],
+	]],
+	['Tồn kho', 'Tồn kho & vận hành', '', [
+		['EOQ', 'chua', ''], ['POQ / EOQ nhận hàng dần', 'chua', ''], ['EOQ cho phép thiếu hàng', 'chua', ''], ['Chiết khấu theo số lượng', 'chua', ''],
+		['Phân tích ABC', 'chua', ''], ['Điểm đặt hàng lại / tồn kho an toàn (Normal)', 'chua', ''], ['Điểm đặt hàng lại (phân phối rời rạc)', 'chua', ''],
+		['Tồn kho một kỳ (rời rạc)', 'chua', ''], ['Tồn kho một kỳ (Normal)', 'chua', ''], ['Số lượng Kanban', 'chua', ''],
+	]],
+	['Lot sizing', 'Tồn kho & vận hành', '', [['Wagner-Whitin, lot-for-lot, EOQ, POQ, part-period, tự nhập', 'chua', '']]],
+	['MRP', 'Tồn kho & vận hành', '', [['Bảng kế hoạch nhu cầu vật tư nhiều cấp', 'chua', '']]],
+	['Hàng đợi', 'Tồn kho & vận hành', '', [
+		['M/M/1', 'chua', ''], ['M/D/1', 'chua', ''], ['M/G/1', 'chua', ''], ['M/Ek/1', 'chua', ''], ['M/M/s', 'chua', ''],
+		['M/M/1 hàng đợi hữu hạn', 'chua', ''], ['M/M/s hàng đợi hữu hạn', 'chua', ''], ['M/M/1 nguồn hữu hạn', 'chua', ''], ['M/M/s nguồn hữu hạn', 'chua', ''],
+	]],
+	['Lập lịch (Job shop)', 'Tồn kho & vận hành', '', [['1 máy: SPT, FCFS, EDD, Slack, Slack/op, Moore, LPT, Critical ratio', 'chua', ''], ['2 máy: Johnson', 'chua', '']]],
+	['Cân bằng dây chuyền', 'Tồn kho & vận hành', '', [['5 quy tắc heuristic (LOT, most following, RPW…)', 'chua', '']]],
+	['Bố trí mặt bằng', 'Tồn kho & vận hành', '', [['Liệt kê toàn bộ, so sánh cặp', 'chua', '']]],
+	['Địa điểm', 'Tồn kho & vận hành', '', [['Chấm điểm theo trọng số', 'chua', ''], ['Trọng tâm (center of gravity)', 'chua', ''], ['Cost-volume theo địa điểm', 'chua', ''], ['Địa điểm một chiều', 'chua', '', 'POM-QM']]],
+	['Đường cong học tập', 'Tồn kho & vận hành', '', [['Tính thời gian từ hệ số học tập', 'chua', ''], ['Tính hệ số từ thời gian', 'chua', '']]],
+	['Năng suất', 'Tồn kho & vận hành', '', [['Năng suất đơn/đa yếu tố theo kỳ', 'chua', '']]],
+	['Đo lường công việc', 'Tồn kho & vận hành', '', [['Nghiên cứu thời gian (thời gian chuẩn)', 'chua', ''], ['Cỡ mẫu quan sát', 'chua', ''], ['Lấy mẫu công việc', 'chua', '', 'POM-QM']]],
+	['Kiểm soát chất lượng', 'Chất lượng', '', [
+		['Biểu đồ p', 'chua', ''], ['Biểu đồ x̄ và R', 'chua', ''], ['Biểu đồ c', 'chua', ''],
+		['Kế hoạch lấy mẫu chấp nhận', 'chua', ''], ['Đường OC', 'chua', ''], ['AOQ', 'chua', ''], ['Năng lực quá trình Cp, Cpk', 'chua', ''],
+	]],
+	['Độ tin cậy', 'Chất lượng', '', [['Mạng tổng quát', 'chua', ''], ['Toàn song song', 'chua', ''], ['Toàn nối tiếp', 'chua', ''], ['Linh kiện giống nhau', 'chua', '']]],
+	['Mô phỏng', 'Thống kê', '', [['Monte Carlo từ bảng tần suất, chọn seed', 'chua', '']]],
+	['Thống kê', 'Thống kê', '', [
+		['Dữ liệu thô, bảng tần suất, phân phối rời rạc', 'chua', ''], ['Phân phối chuẩn', 'mot-phan', 'Đã có hàm normCdf bên trong PERT, chưa có công cụ riêng.'],
+		['Nhị thức, Poisson, mũ', 'chua', ''],
+	]],
+	['Công cụ chung', 'Công cụ', '', [
+		['Máy tính phân phối chuẩn', 'chua', ''], ['Cài đặt số chữ số thập phân', 'chua', ''], ['Ví dụ theo giáo trình (Heizer, Render, Taylor…)', 'chua', ''],
+		['Chọn bộ menu POM / QM / Tất cả', 'chua', ''], ['Dán dữ liệu từ MyLab', 'chua', ''], ['Hướng dẫn / trợ giúp từng module', 'chua', ''],
+	]],
+];
+
+const F = [
+	['cao', 'Add-in chỉ chạy khi server cục bộ đang bật', 'Sau khi khởi động lại máy, bấm nút OM/QM Lite sẽ ra màn trắng cho tới khi chạy lại node server.mjs.', 'Đưa add-in lên một địa chỉ HTTPS cố định (GitHub Pages hoặc Vercel), hoặc tạo LaunchAgent để server tự chạy khi đăng nhập.'],
+	['cao', 'Bấm "Chèn mẫu" lần nữa xoá sheet mẫu đã sửa', 'Hàm put() gọi worksheets.getItemOrNullObject(name).delete() mà không hỏi. Nếu bạn đã gõ số liệu thật vào "Mẫu QHTT" rồi bấm lại, dữ liệu mất.', 'Không bao giờ xoá sheet có sẵn: đặt tên tăng dần ("Mẫu QHTT (2)") hoặc hỏi xác nhận ngay trong pane.'],
+	['cao', 'Mỗi lần Tính ghi đè sheet kết quả trước', 'Sheet "KQ Dự báo" bị xoá và tạo lại, nên không so sánh được hai phương pháp (ví dụ MA với ES) cạnh nhau.', 'Mỗi lần giải tạo sheet mới có số thứ tự, hoặc thêm lựa chọn "Ghi vào sheet hiện có".'],
+	['cao', 'Phải tự bôi đen đúng vùng trước khi bấm Tính', 'Sau khi chèn mẫu, vùng chọn chỉ là ô A1, bấm Tính báo lỗi "Hãy bôi đen vùng dữ liệu". Khi test phải chọn A1:D5 bằng tay. Việc nhận dòng tiêu đề dựa vào phỏng đoán.', 'Làm theo cách của bản gốc: bước "Tạo bài toán" hỏi số dòng/cột rồi sinh bảng nhập có tên (Excel Table). Nút Giải đọc bảng theo tên, không cần chọn. Giữ "Dùng vùng đang chọn" làm tuỳ chọn phụ.'],
+	['cao', '4 tab cố định không chứa nổi 29 module', 'Nhãn "QH tuyến tính" đã phải xuống dòng ở 4 tab. Bản gốc có khoảng 100 mô hình con.', 'Màn chính là danh mục có ô tìm kiếm, nhóm theo chương, có mục gần đây. Trong module, chọn mô hình con bằng dropdown.'],
+	['tb', 'Kết quả là số tĩnh, không có công thức', 'Bản gốc Excel OM/QM ghi công thức vào ô để sinh viên lần ngược cách tính. Bản Lite chỉ ghi giá trị, đổi dữ liệu không tự cập nhật.', 'Ghi công thức Excel cho các phép tính đóng (trung bình trượt, ES, sai số, EOQ, hàng đợi). Thuật toán lặp (simplex, B&B) vẫn ghi giá trị và có nút Giải lại.'],
+	['tb', 'Số không được định dạng', 'Kết quả hiện 11,666667, MAPE hiện 0,336816 thay vì 33,7 %, tiền không có dấu phân cách nghìn (200000, -180000).', 'Đặt numberFormat theo loại cột (số, %, tiền) và thêm cài đặt số chữ số thập phân như nút Decimals của bản gốc.'],
+	['tb', 'Sheet kết quả khó đọc', 'Chỉ dòng tiêu đề được in đậm. Không phân biệt ô nhập và ô kết quả, không viền, không làm nổi phương án được chọn hoặc hoạt động găng.', 'Bộ style chung: dải tiêu đề màu, ô nhập tô vàng nhạt, ô kết quả tô xanh, in đậm và tô dòng tốt nhất, cố định dòng tiêu đề.'],
+	['tb', 'Không có đồ thị nào', 'Bản gốc có đồ thị cho hầu hết module: dự báo, miền khả thi LP, Gantt, chi phí EOQ, biểu đồ kiểm soát, đường OC.', 'Dùng API biểu đồ của Office.js để chèn biểu đồ cạnh bảng kết quả, cộng một sparkline nhỏ trong pane.'],
+	['tb', 'Thiếu các bảng chi tiết phục vụ học', 'Không có bảng lặp simplex, bảng ranging, các bước nhánh cận, bảng tính PERT chi tiết. Đây là phần sinh viên dùng nhiều nhất trong POM-QM.', 'Mỗi module có mục "Bảng chi tiết" tuỳ chọn, ghi ra sheet riêng.'],
+	['tb', 'Thông báo lỗi không chỉ tới ô sai', 'Lỗi hiện dưới nút (ví dụ "Hoạt động B: thời gian phải là số") nhưng không chọn ô gây lỗi.', 'Khi kiểm tra dữ liệu, chọn và tô đỏ ô sai trong sheet, đồng thời giữ thông báo trong pane.'],
+	['thap', 'Tiêu đề "OM/QM Lite" lặp hai lần', 'Khung của Office đã có tên add-in, task pane in thêm một h1 nữa, tốn khoảng 50px chiều cao.', 'Bỏ h1, dùng dòng breadcrumb nhỏ.'],
+	['thap', 'Thuật ngữ trộn Anh–Việt', '"Slack/Surplus", "Maximax", "ES/EF" đứng cạnh nhãn tiếng Việt, chưa có giải thích.', 'Dùng thuật ngữ theo giáo trình tiếng Việt, kèm tên tiếng Anh trong tooltip; thêm lựa chọn ngôn ngữ VI/EN.'],
+	['thap', 'Không nhớ lựa chọn giữa các lần mở', 'Phương pháp, n, α, Hurwicz α trở về mặc định mỗi lần mở pane.', 'Lưu bằng Office.context.document.settings (theo file) hoặc localStorage (theo máy).'],
+	['thap', 'Chưa có ví dụ theo giáo trình và trợ giúp', 'Bản gốc có ví dụ theo từng chương của Heizer/Render/Taylor, video hướng dẫn và PDF trợ giúp.', 'Thư viện ví dụ theo chương, mỗi module có mục "Cách nhập" ngắn ngay trong pane.'],
+];
+
+const P = [
+	['Giai đoạn 0', 'Nền tảng', 'Làm một lần, mọi module dùng lại. Không thêm module mới trước khi xong phần này.', [
+		'Sổ đăng ký module: mỗi mô hình khai báo tham số, bảng nhập, hàm giải, cách trình bày kết quả',
+		'Trình tạo bảng nhập (Excel Table có tên) và trình đọc bảng theo tên',
+		'Bộ style và định dạng số chung; cài đặt số chữ số thập phân',
+		'Ghi sheet an toàn: không xoá sheet có sẵn',
+		'Trợ giúp vẽ biểu đồ (đường, cột, Gantt, phân tán)',
+		'Danh mục tìm kiếm + điều hướng mới; lưu lựa chọn',
+		'Host HTTPS cố định hoặc tự khởi động server',
+	]],
+	['Giai đoạn 1', 'Hoàn thiện 4 module đã có', '23 mô hình con còn thiếu hoặc mới có một phần.', [
+		'Dự báo: ES có xu hướng, hồi quy đơn/bội, chỉ số mùa vụ, phân rã, projector, phân tích sai số, tracking signal, đồ thị',
+		'QHTT: ranging, đồ thị 2 biến, bảng lặp; quy hoạch nguyên/hỗn hợp; quy hoạch mục tiêu',
+		'Quyết định: cây quyết định (bảng + vẽ), tồn kho 1 kỳ',
+		'PERT/CPM: AOA, trung bình/độ lệch chuẩn, crashing, ngân sách, Gantt, nhiều đường găng',
+	]],
+	['Giai đoạn 2', 'Module dùng nhiều nhất', 'Các chương có bài tập nhiều trong giáo trình Heizer/Render.', [
+		'Tồn kho (10 mô hình), Vận tải, Phân công',
+		'Hoà vốn (3), Hàng đợi (9), Kiểm soát chất lượng (7), Địa điểm (4)',
+		'Máy tính phân phối chuẩn, thống kê cơ bản',
+	]],
+	['Giai đoạn 3', 'Phần còn lại', 'Hoàn tất danh mục 29 module.', [
+		'Hoạch định tổng hợp, Lot sizing, MRP, Lập lịch, Cân bằng dây chuyền, Bố trí mặt bằng',
+		'Đầu tư NPV/IRR, Trò chơi, Markov, Mạng, Năng suất, Độ tin cậy',
+		'Mô phỏng, Đường cong học tập, Đo lường công việc, Kanban',
+		'Ví dụ theo giáo trình, chọn bộ menu POM/QM',
+	]],
+];
+
+const all = M.flatMap((m) => m[3]);
+const cnt = (arr, s) => arr.filter((x) => x[1] === s).length;
+const tot = all.length, co = cnt(all, 'co'), mp = cnt(all, 'mot-phan'), ch = cnt(all, 'chua');
+const modsTouched = M.filter((m) => m[3].some((s) => s[1] !== 'chua')).length;
+document.getElementById('stats').innerHTML = [
+	[tot, 'mô hình con trong bản gốc'], [co, 'đã có, tương đương'], [mp, 'mới có một phần'], [`${modsTouched}/${M.length - 1}`, 'module đã bắt đầu'],
+].map(([n, l]) => `<div class="stat"><span class="n">${n}</span><span class="l">${l}</span></div>`).join('');
+const bb = document.getElementById('bigbar');
+bb.innerHTML = `<i style="width:${co / tot * 100}%;background:var(--ok)"></i><i style="width:${mp / tot * 100}%;background:var(--part)"></i>`;
+bb.setAttribute('aria-label', `${co} có, ${mp} một phần, ${ch} chưa có trên tổng ${tot}`);
+
+let filt = 'all', q = '';
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function render() {
+	const qq = q.trim().toLowerCase();
+	const html = M.map(([name, grp, note, subs]) => {
+		const shown = subs.filter((s) => (filt === 'all' || s[1] === filt) && (!qq || (name + ' ' + s[0] + ' ' + s[2]).toLowerCase().includes(qq)));
+		if (!shown.length) return '';
+		const c = cnt(subs, 'co'), p = cnt(subs, 'mot-phan'), n = subs.length;
+		const st = c === n ? 'co' : c + p > 0 ? 'mot-phan' : 'chua';
+		return `<details class="mod" ${qq || filt !== 'all' ? 'open' : ''}>
+			<summary><span class="mname"><b>${esc(name)}</b><small>${esc(grp)}${note ? ' · ' + esc(note) : ''}</small></span>
+			<span class="mright"><span class="mini" aria-hidden="true"><i style="width:${c / n * 100}%;background:var(--ok)"></i><i style="width:${p / n * 100}%;background:var(--part)"></i></span>
+			<span class="count">${c + p}/${n}</span><span class="pill ${st}">${S[st]}</span></span></summary>
+			<div class="subs">${shown.map((s) => `<div class="sub"><span class="t">${esc(s[0])}${s[3] ? `<span class="src">${s[3]}</span>` : ''}</span><span class="pill ${s[1]}">${S[s[1]]}</span>${s[2] ? `<span class="n">${esc(s[2])}</span>` : ''}</div>`).join('')}</div>
+		</details>`;
+	}).join('');
+	document.getElementById('mods').innerHTML = html || '<div class="empty">Không có mô hình nào khớp bộ lọc.</div>';
+}
+document.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+	filt = b.dataset.f;
+	document.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+	render();
+}));
+document.getElementById('q').addEventListener('input', (e) => { q = e.target.value; render(); });
+render();
+
+const SEV = { cao: 'Ưu tiên cao', tb: 'Trung bình', thap: 'Thấp' };
+document.getElementById('findings').innerHTML = F.map(([sev, t, ev, fix]) =>
+	`<article class="f"><header><h3>${esc(t)}</h3><span class="pill ${sev}">${SEV[sev]}</span></header>
+	<dl><dt>Hiện trạng</dt><dd>${esc(ev)}</dd><dt>Đề xuất</dt><dd>${esc(fix)}</dd></dl></article>`).join('');
+
+document.getElementById('phases').innerHTML = P.map(([k, t, d, items]) =>
+	`<div class="phase"><div class="tag"><span>${k}</span><b>${t}</b></div><div style="display:grid;gap:8px;min-width:0"><p class="muted">${esc(d)}</p><ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></div></div>`).join('');
+</script>

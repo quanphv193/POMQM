@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OM/QM Lite</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link rel="stylesheet" href="taskpane.css">
+</head><body>
+<div id="app" aria-live="polite"></div>
+<script>
+// Office.js comes from Microsoft's CDN; without a connection the pane would stay blank.
+setTimeout(function () {
+	if (typeof Office === 'undefined' && !document.getElementById('app').innerHTML) {
+		document.getElementById('app').innerHTML = '<div class="scroll"><div class="err">Không tải được Office.js từ Microsoft. Kiểm tra kết nối mạng rồi đóng và mở lại OM/QM Lite.</div></div>';
+	}
+}, 8000);
+</script>
+<script type="module" src="src/app.js"></script>
+</body></html>

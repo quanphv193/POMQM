@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>9a38fb50-d2a8-43c4-8167-098d4a8d4b5e</Id>
+  <Version>0.2.0.0</Version>
+  <ProviderName>OM/QM Lite</ProviderName>
+  <DefaultLocale>vi-VN</DefaultLocale>
+  <DisplayName DefaultValue="OM/QM Lite"/>
+  <Description DefaultValue="Dự báo, quy hoạch tuyến tính, phân tích quyết định, PERT/CPM trong Excel."/>
+  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://localhost:3000/taskpane.html"/>
+  <AppDomains><AppDomain>https://localhost:3000</AppDomain></AppDomains>
+  <Hosts><Host Name="Workbook"/></Hosts>
+  <DefaultSettings><SourceLocation DefaultValue="https://localhost:3000/taskpane.html"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts><Host xsi:type="Workbook"><DesktopFormFactor>
+      <GetStarted><Title resid="T.Title"/><Description resid="T.Desc"/><LearnMoreUrl resid="Url.Pane"/></GetStarted>
+      <FunctionFile resid="Url.Pane"/>
+      <ExtensionPoint xsi:type="PrimaryCommandSurface"><OfficeTab id="TabHome"><Group id="G.Omqm">
+        <Label resid="T.Group"/>
+        <Icon><bt:Image size="16" resid="I16"/><bt:Image size="32" resid="I32"/><bt:Image size="80" resid="I80"/></Icon>
+        <Control xsi:type="Button" id="B.Open"><Label resid="T.Title"/>
+          <Supertip><Title resid="T.Title"/><Description resid="T.Desc"/></Supertip>
+          <Icon><bt:Image size="16" resid="I16"/><bt:Image size="32" resid="I32"/><bt:Image size="80" resid="I80"/></Icon>
+          <Action xsi:type="ShowTaskpane"><TaskpaneId>OmqmPane</TaskpaneId><SourceLocation resid="Url.Pane"/></Action></Control>
+      </Group></OfficeTab></ExtensionPoint>
+    </DesktopFormFactor></Host></Hosts>
+    <Resources>
+      <bt:Images><bt:Image id="I16" DefaultValue="https://localhost:3000/assets/icon-16.png"/><bt:Image id="I32" DefaultValue="https://localhost:3000/assets/icon-32.png"/><bt:Image id="I80" DefaultValue="https://localhost:3000/assets/icon-80.png"/></bt:Images>
+      <bt:Urls><bt:Url id="Url.Pane" DefaultValue="https://localhost:3000/taskpane.html"/></bt:Urls>
+      <bt:ShortStrings><bt:String id="T.Title" DefaultValue="OM/QM Lite"/><bt:String id="T.Group" DefaultValue="OM/QM"/></bt:ShortStrings>
+      <bt:LongStrings><bt:String id="T.Desc" DefaultValue="Mở bảng công cụ OM/QM Lite"/></bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
