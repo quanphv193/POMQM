@@ -86,12 +86,12 @@ N('Trong Excel: **Home → Add-ins → Developer Add-ins → OM/QM Lite**. Từ 
 NOTE('Mẹo: nếu không thấy mục “Developer Add-ins”, hãy thoát hẳn Excel (Cmd+Q) rồi mở lại. Excel chỉ đọc danh sách add-in lúc khởi động.')
 
 d.add_heading('3b. Cài đặt trên Windows', 1)
-P('Bản Windows dùng gói riêng “OMQM-Lite-Windows”. Add-in được tải từ https://quanphv193.github.io/POMQM/ nên máy cần có internet; dữ liệu và phép tính vẫn nằm trên máy bạn.')
-N('Giải nén file zip. Bấm **chuột phải** vào **Cai-dat-Windows.bat** → **Run as administrator** (nếu SmartScreen cảnh báo: More info → Run anyway). Nếu file tải về bị chặn: chuột phải file .zip → Properties → tick Unblock → OK, rồi mới giải nén.')
-N('Khi hộp thoại quyền quản trị (UAC) hiện ra, bấm **Yes**. Bước này chỉ để tạo một thư mục chia sẻ chứa file khai báo add-in.')
-N('Thoát hẳn Excel rồi mở lại.')
-N('Trong Excel: **Insert → Add-ins → My Add-ins → tab SHARED FOLDER → OM/QM Lite → Add**. Nút OM/QM Lite hiện trên tab Home.')
-B('Nếu cách trên không chạy được: Insert → Add-ins → My Add-ins → Manage My Add-ins → **Upload My Add-in**, chọn file manifest.xml trong gói.')
+P('Bản Windows dùng gói riêng “OMQM-Lite-Windows”. Add-in được tải từ https://quanphv193.github.io/POMQM/ nên máy cần có internet; dữ liệu và phép tính vẫn nằm trên máy bạn. Không cần quyền quản trị.')
+N('**Giải nén đầy đủ** file zip ra một thư mục (không chạy file ngay trong cửa sổ zip). Nếu file tải về bị chặn: chuột phải file .zip → Properties → tick Unblock → OK, rồi mới giải nén.')
+N('Bấm đúp **Cai-dat-Windows.bat** (nếu SmartScreen cảnh báo: More info → Run anyway). Cửa sổ đen báo “DA CAI XONG”, bấm phím bất kỳ để đóng.')
+N('**Thoát hẳn Excel** (đóng hết cửa sổ) rồi mở lại.')
+N('Trong Excel: **Insert → My Add-ins (mũi tên xuống) → mục “Developer Add-ins” → OM/QM Lite**. Nút OM/QM Lite hiện trên tab Home.')
+B('Nếu không thấy mục Developer Add-ins: Insert → My Add-ins → See All… → Manage My Add-ins (góc trên phải) → **Upload My Add-in**, chọn file manifest.xml trong gói.')
 B('Gỡ cài đặt: bấm đúp Go-Windows.bat. Cách dùng các mô hình giống hệt bản Mac (mục 4 trở đi).')
 NOTE('Lưu ý: bản Windows chưa được kiểm thử trên máy Windows thật vào thời điểm viết tài liệu này. Nếu gặp lỗi, chụp màn hình thông báo và gửi cho người gửi gói.')
 
