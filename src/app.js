@@ -1,13 +1,13 @@
 /* global Office */
 import { MODULES, CATALOG, inMenu } from './modules/index.js';
 import { loadSettings, saveSettings, pushRecent } from './core/settings.js';
-import { createInputTable, readInputTable, writeReport, selectInputCell, activateSheet, peekInputTable } from './core/excel.js';
+import { createInputTable, readInputTable, writeReport, selectInputCell, activateSheet, peekInputTable, preparePrint } from './core/excel.js';
 import { InputError } from './core/errors.js';
 import { fmtValue } from './core/format.js';
 
 const app = document.getElementById('app');
 const settings = loadSettings();
-const state = { view: 'home', q: '', moduleId: null, modelId: null, result: null, error: null, busy: false, tableInfo: null, lastSheet: null, warnings: [], preview: null };
+const state = { view: 'home', q: '', moduleId: null, modelId: null, result: null, error: null, busy: false, tableInfo: null, lastSheet: null, warnings: [], preview: null, share: null, paste: false, note: null };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // Diacritic-insensitive: "du an" finds "dự án".
 const fold = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
@@ -99,12 +99,18 @@ function moduleView() {
 	return h`<div class="scroll">
 		<div class="crumb"><button id="back">‹ Danh mục</button><span>/</span><b>${esc(mod.name)}</b></div>
 		${mod.models.length > 1 ? `<div class="field"><label for="model">Mô hình</label><select id="model">${modelOptions(mod, model)}</select></div>` : ''}
+		${state.note ? `<p class="status" role="status" style="color:#1D6B48">${esc(state.note)}</p>` : ''}
 		${model.hint ? `<p class="status">${esc(model.hint)}</p>` : ''}
 		<section class="step"><h2><span class="n">1</span>Bảng nhập liệu</h2>
 			${help ? `<p class="help">${esc(help)}</p>` : ''}
 			<label class="check"><input type="checkbox" id="sample" ${settings.sample ? 'checked' : ''}> Điền sẵn ví dụ trong giáo trình</label>
 			${dims ? `<div class="${dimList.length > 1 ? 'row2' : ''}">${dims}</div>` : ''}
 			<button class="btn" id="create">Tạo bảng nhập trên sheet mới</button>
+			<div <div class="row2"><button class="btn" id="savej">Lưu bài (.json)</button><button class="btn" id="loadj">Mở bài (.json)</button></div>
+			<div <input type="file" id="jfile" accept=".json,application/json" hidden>
+			<div ${state.share ? `<textarea id="sharebox" readonly rows="5" style="width:100%;font:11px monospace">${esc(state.share)}</textarea><button class="link" id="copyj">Sao chép nội dung ›</button>` : ''}
+			<div <button class="link" id="pastej">${state.paste ? 'Ẩn ô dán' : 'Hoặc dán nội dung bài đã lưu ›'}</button>
+			<div ${state.paste ? '<textarea id="pastebox" rows="5" style="width:100%;font:11px monospace" placeholder="Dán nội dung file .json vào đây"></textarea><button class="btn" id="openpaste">Mở nội dung đã dán</button>' : ''}
 			<div class="status">${ti ? `Sẽ dùng bảng trên sheet <b>${esc(ti.sheet)}</b> (${ti.rows} dòng).` : 'Chưa có bảng nhập cho module này trong file.'}</div>
 		</section>
 		${params ? `<section class="step"><h2><span class="n">2</span>Tham số</h2>${params}</section>` : ''}
@@ -134,7 +140,7 @@ function resultBlock() {
 		`<div class="kv ${s.strong ? 'strong' : ''}"><span>${esc(s.label)}</span><b>${esc(fmtValue(s.value, s.fmt, settings.decimals))}</b></div>`).join('');
 	return `<section class="card" aria-label="Kết quả">${rows}
 		${state.preview ? `<div class="treebox">${state.preview}</div>` : ''}
-		${state.lastSheet ? `<button class="link" id="open">Mở sheet “${esc(state.lastSheet)}” ›</button>` : ''}
+		${state.lastSheet ? `<button class="link" id="pdf">Chuẩn bị in / xuất PDF ›</button><button class="link" id="open">Mở sheet “${esc(state.lastSheet)}” ›</button>` : ''}
 		${state.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join('')}</section>`;
 }
 
@@ -179,6 +185,13 @@ function bind() {
 	document.getElementById('create')?.addEventListener('click', createTable);
 	document.getElementById('solve')?.addEventListener('click', solve);
 	document.getElementById('open')?.addEventListener('click', () => activateSheet(state.lastSheet).catch(() => {}));
+	document.getElementById('savej')?.addEventListener('click', saveJson);
+	document.getElementById('loadj')?.addEventListener('click', () => document.getElementById('jfile').click());
+	document.getElementById('jfile')?.addEventListener('change', async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) applyLoad(await f.text()); });
+	document.getElementById('copyj')?.addEventListener('click', () => { const b = document.getElementById('sharebox'); b.select(); try { navigator.clipboard.writeText(b.value); document.execCommand('copy'); } catch { /* user can copy by hand */ } });
+	document.getElementById('pastej')?.addEventListener('click', () => { state.paste = !state.paste; render(); });
+	document.getElementById('openpaste')?.addEventListener('click', () => applyLoad(document.getElementById('pastebox').value));
+	document.getElementById('pdf')?.addEventListener('click', printSetup);
 }
 function bindItems() {
 	app.querySelectorAll('[data-mod]').forEach((b) => b.addEventListener('click', () => openModule(b.dataset.mod, b.dataset.model)));
@@ -193,7 +206,7 @@ function storeParam(id, el) {
 }
 async function openModule(moduleId, modelId) {
 	if (state.view === 'module' && state.moduleId === moduleId && (!modelId || state.modelId === modelId)) return;
-	Object.assign(state, { view: 'module', moduleId, modelId: modelId || MODULES[moduleId].models[0].id, preview: null, result: null, error: null, tableInfo: null, lastSheet: null, warnings: [] });
+	Object.assign(state, { view: 'module', moduleId, modelId: modelId || MODULES[moduleId].models[0].id, preview: null, result: null, error: null, tableInfo: null, lastSheet: null, warnings: [], note: null, share: null, paste: false });
 	render();
 	const { mod, model } = current();
 	state.tableInfo = await peekInputTable(tableKey(mod, model));
@@ -212,7 +225,7 @@ async function createTable() {
 async function solve() {
 	const { mod, model } = current();
 	const p = paramValues(mod, model);
-	state.busy = true; state.error = null; render();
+	state.busy = true; state.error = null; state.note = null; render();
 	let table = null;
 	try {
 		table = await readInputTable(tableKey(mod, model));
@@ -233,5 +246,54 @@ async function solve() {
 		} else state.error = (e && e.message) || String(e);
 	}
 	state.busy = false;
+	render();
+}
+
+// ---------- Save / open a worked problem (.json) ----------
+function tryDownload(name, text) {
+	try {
+		const a = document.createElement('a');
+		a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+		a.download = name; document.body.appendChild(a); a.click(); a.remove();
+		return true;
+	} catch { return false; }
+}
+async function saveJson() {
+	const { mod, model } = current();
+	try {
+		const t = await readInputTable(tableKey(mod, model));
+		const data = { app: 'omqm-lite', version: 1, module: mod.id, model: model.id, params: paramValues(mod, model), dims: dimValues(mod, model), header: t.header, rows: t.rows, saved: new Date().toISOString() };
+		const text = JSON.stringify(data, null, 1);
+		const ok = tryDownload(`omqm-${mod.id}-${model.id}.json`, text);
+		state.share = text; state.error = null;
+		state.note = ok ? 'Đã gửi file .json tới thư mục Tải xuống. Nếu không thấy file, hãy sao chép nội dung bên dưới và dán vào một file .json.' : 'Trình duyệt không cho tải file. Hãy sao chép nội dung bên dưới và lưu vào file .json.';
+	} catch (e) { state.error = e instanceof InputError ? e.message : 'Không lưu được: ' + ((e && e.message) || e); }
+	render();
+}
+async function applyLoad(text) {
+	try {
+		let d; try { d = JSON.parse(text); } catch { throw new Error('Nội dung không phải file .json hợp lệ.'); }
+		if (d.app !== 'omqm-lite' || !MODULES[d.module]) throw new Error('Đây không phải file bài của OM/QM Lite.');
+		const mod = MODULES[d.module], model = mod.models.find((m) => m.id === d.model);
+		if (!model || !Array.isArray(d.header) || !Array.isArray(d.rows)) throw new Error('File thiếu thông tin mô hình hoặc dữ liệu.');
+		Object.assign(state, { view: 'module', moduleId: mod.id, modelId: model.id, preview: null, result: null, error: null, tableInfo: null, lastSheet: null, warnings: [], share: null, paste: false });
+		const k = tableKey(mod, model);
+		settings.params[`${mod.id}.${model.id}`] = { ...(d.params || {}) };
+		settings.dims[k] = { ...(d.dims || {}) };
+		saveSettings(settings);
+		let spec;
+		try { spec = mod.inputTable(dimValues(mod, model), model, false); } catch { spec = { title: mod.name, hint: '', columns: [], firstInputCol: 0 }; }
+		spec = { ...spec, columns: d.header.map((label, i) => ({ ...(spec.columns[i] || { fmt: 'num' }), label })), rows: d.rows };
+		const r = await createInputTable(k, spec.sheet || mod.name.split(' (')[0], spec, settings.decimals);
+		state.tableInfo = { sheet: r.sheet, rows: d.rows.length };
+		state.note = 'Đã mở bài đã lưu: bảng nhập và tham số được khôi phục. Bấm Giải để tính lại.';
+	} catch (e) { state.error = (e && e.message) || String(e); if (state.view !== 'module') state.view = 'home'; }
+	render();
+}
+async function printSetup() {
+	try {
+		const r = await preparePrint(state.lastSheet);
+		state.note = `Đã đặt trang in cho sheet “${state.lastSheet}” (A4, ${r.landscape ? 'khổ ngang' : 'khổ dọc'}, vừa chiều ngang). Bấm Cmd+P → PDF → Lưu dạng PDF.`;
+	} catch (e) { state.note = 'Không đặt được trang in tự động (' + ((e && e.message) || e) + '). Bấm Cmd+P → PDF → Lưu dạng PDF.'; }
 	render();
 }

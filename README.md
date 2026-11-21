@@ -12,6 +12,11 @@ Add-in không bao giờ xoá hay ghi đè sheet có sẵn. Nhập sai thì ô l�
 - Thanh **Tất cả / POM / QM** ở màn hình chính lọc danh mục theo bộ menu (phân loại gần đúng theo POM-QM).
 - Cây quyết định được vẽ trên sheet (hình vuông = quyết định, tròn = ngẫu nhiên, đường đậm = lựa chọn tốt nhất) và xem trước ngay trong pane.
 
+## Lưu / mở bài và xuất PDF
+- **Lưu bài (.json)**: lưu tên mô hình, tham số và dữ liệu bảng nhập thành file `.json` (tải về thư mục Tải xuống; nếu Excel không cho tải thì có ô nội dung để sao chép). **Mở bài (.json)** hoặc dán nội dung: tạo lại đúng bảng nhập và tham số, rồi bấm Giải. Gần với việc lưu/mở file `.lin`, `.for`, `.pro` của POM-QM.
+- **Chuẩn bị in / xuất PDF** (trong thẻ kết quả): đặt sheet kết quả khổ A4, vừa chiều ngang; sau đó Cmd+P → PDF → Lưu dạng PDF (Office.js không bấm in thay người dùng được).
+- Chưa kiểm thử tự động trong Excel hai tính năng này (chỉ kiểm tra cú pháp và test đơn vị); `.selftest` với nội dung `saveload` chạy một bài kiểm tra vòng lưu-mở trong workbook trống.
+
 ## Các module
 Hoạch định & dự báo: Dự báo (15 mô hình, gồm trung bình giản đơn, san bằng trên chuỗi khử mùa, hồi quy có ANOVA/kiểm định t, F/khoảng tin cậy/khoảng dự báo/hệ số co dãn), Hoạch định tổng hợp · Tối ưu hoá: QH tuyến tính (độ nhạy, đồ thị, bảng lặp), QH nguyên, QH mục tiêu, Vận tải, Phân công, Mạng (cây khung, đường ngắn nhất, luồng cực đại) · Ra quyết định: Bảng quyết định / cây quyết định / tồn kho một kỳ / xác suất hậu nghiệm Bayes / xác suất từ bảng tần suất, Trò chơi, Markov · Tài chính: Hoà vốn, NPV/IRR, **Giá trị thời gian của tiền** (lãi suất thực/danh nghĩa, niên kim, khoản trả đều, lịch trả nợ, tìm lãi suất trả góp, so sánh dự án với đồ thị NPV, chọn thiết bị, mua hay thuê, dự án có khấu hao và thuế) · Dự án: PERT/CPM (AON, AOA, crashing, ngân sách) · Tồn kho & vận hành: Tồn kho (8), Cỡ lô, MRP, Hàng đợi (9), Lập lịch, Cân bằng dây chuyền, Bố trí mặt bằng, Địa điểm, Đường cong học tập, Năng suất, Đo lường công việc · Chất lượng: Kiểm soát chất lượng (6), Độ tin cậy · Thống kê: Thống kê & phân phối, Mô phỏng.
 

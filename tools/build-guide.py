@@ -114,6 +114,12 @@ N('**Bấm Giải**. Kết quả ghi ra sheet mới, không đụng sheet khác.
 N('Muốn giải lại với số khác: sửa ô vàng rồi bấm Giải; add-in tạo sheet kết quả mới (đổi tên “KQ …” thành tên bạn muốn).')
 P('Nếu nhập sai (ô trống, chữ thay vì số, dữ liệu không hợp lệ), add-in hiện thông báo tiếng Việt và tự chọn đúng ô bị lỗi để bạn sửa.')
 
+d.add_heading('6b. Lưu bài, mở lại bài và xuất PDF', 2)
+B('**Lưu bài (.json)**: dưới bước 1 của mỗi mô hình. Lưu tên mô hình, tham số và dữ liệu đang nhập vào file .json (thường nằm ở thư mục Tải xuống). Nếu không thấy file, sao chép nội dung hiện ra bên dưới và dán vào một file .json.')
+B('**Mở bài (.json)**: chọn file đã lưu (hoặc dán nội dung). Add-in tạo lại bảng nhập với đúng dữ liệu và tham số; bấm Giải để tính lại. Dùng để gửi bài cho bạn bè hoặc giảng viên.')
+B('**Chuẩn bị in / xuất PDF**: sau khi Giải, trong thẻ kết quả. Add-in đặt sheet kết quả khổ A4 và vừa chiều ngang. Sau đó bấm Cmd+P → PDF → Lưu dạng PDF.')
+B('File Excel (.xlsx) đã chứa đủ sheet nhập và sheet kết quả: lưu file Excel là mở lại sửa được. Muốn xuất HTML dùng File → Save As → Web Page.')
+
 d.add_heading('7. Danh mục mô hình', 1)
 P('Dưới đây là toàn bộ nhóm và mô hình. Mỗi mô hình có ví dụ mẫu và dòng hướng dẫn nhập.')
 CAT = [

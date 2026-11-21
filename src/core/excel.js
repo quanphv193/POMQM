@@ -257,3 +257,22 @@ export async function peekInputTable(moduleId) {
 		return { sheet: t.sheet, rows: t.rows.length };
 	} catch { return null; }
 }
+
+// Sets the result sheet up for printing / "Save as PDF" (A4, one page wide) and brings it to the front.
+// Office.js cannot press Print for the user, so the last step (Cmd+P) stays manual.
+export async function preparePrint(name) {
+	return Excel.run(async (ctx) => {
+		const ws = ctx.workbook.worksheets.getItem(name);
+		const used = ws.getUsedRange(); used.load('columnCount');
+		await ctx.sync();
+		const pl = ws.pageLayout;
+		pl.orientation = used.columnCount > 7 ? 'Landscape' : 'Portrait';
+		pl.paperSize = 'A4';
+		pl.zoom = { horizontalFitToPages: 1 };
+		pl.centerHorizontally = true;
+		pl.setPrintArea(used);
+		ws.activate();
+		await ctx.sync();
+		return { landscape: used.columnCount > 7 };
+	});
+}

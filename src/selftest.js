@@ -2,7 +2,7 @@
 // Development self-test, run inside Excel: every model, textbook sample in, report out,
 // then every formula cell Excel calculated is compared with the value JavaScript computed.
 import { MODULES } from './modules/index.js';
-import { createInputTable, readInputTable, writeReport } from './core/excel.js';
+import { createInputTable, readInputTable, writeReport, preparePrint } from './core/excel.js';
 import { layoutReport } from './core/layout.js';
 
 const log = (m) => fetch('/__log?' + encodeURIComponent(m)).catch(() => {});
@@ -47,7 +47,49 @@ async function probeShapes() {
 	}
 }
 
+async function probeExport() {
+	try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['{"probe":1}'], { type: 'application/json' })); a.download = 'omqm-probe.json'; document.body.appendChild(a); a.click(); a.remove(); log('probe download: click done'); } catch (e) { log('probe download FAIL ' + (e && e.message)); }
+	try {
+		await new Promise((res) => Office.context.document.getFileAsync(Office.FileType.Pdf, { sliceSize: 1048576 }, (r) => {
+			if (r.status !== 'succeeded') { log('probe getFileAsync PDF FAIL ' + (r.error && r.error.message)); return res(); }
+			const f = r.value; log(`probe getFileAsync PDF ok: size ${f.size}, slices ${f.sliceCount}`);
+			f.getSliceAsync(0, (s) => { log('probe slice0 ' + s.status + ' ' + (s.value ? s.value.data.length : '')); f.closeAsync(); res(); });
+		}));
+	} catch (e) { log('probe PDF exception ' + (e && e.message)); }
+	try { await Excel.run(async (ctx) => { const ws = ctx.workbook.worksheets.getActiveWorksheet(); ws.pageLayout.orientation = 'Landscape'; ws.pageLayout.paperSize = 'A4'; ws.pageLayout.zoom = { horizontalFitToPages: 1 }; ws.pageLayout.centerHorizontally = true; await ctx.sync(); }); log('probe pageLayout ok'); } catch (e) { log('probe pageLayout FAIL ' + (e && e.message)); }
+	try { log('probe window.print type ' + typeof window.print + ' fileInput ' + !!document.createElement('input').files); } catch (e) { log('x ' + e.message); }
+}
+
+async function saveLoadTest() {
+	let pass = 0, fail = 0;
+	for (const [mid, model] of [['lp', 'lp'], ['forecast', 'ma'], ['pert', 'three'], ['inventory', 'eoq']]) {
+		try {
+			const mod = MODULES[mid], m = mod.models.find((x) => x.id === model) || mod.models[0];
+			const dims = Object.fromEntries((m.dims || mod.dims || []).map((d) => [d.id, d.default]));
+			const key = `${mod.id}_${m.table || 'main'}`;
+			await createInputTable(key, 'T sl ' + m.id, mod.inputTable(dims, m, true), 2);
+			const a = await readInputTable(key);
+			const json = JSON.parse(JSON.stringify({ header: a.header, rows: a.rows }));
+			const spec = mod.inputTable(dims, m, false);
+			await createInputTable(key, 'T sl2 ' + m.id, { ...spec, columns: json.header.map((label, i) => ({ ...(spec.columns[i] || { fmt: 'num' }), label })), rows: json.rows }, 2);
+			const b = await readInputTable(key);
+			const same = JSON.stringify(a.rows) === JSON.stringify(b.rows) && JSON.stringify(a.header) === JSON.stringify(b.header);
+			const out = await writeReport('R sl ' + m.id, mod.report(...(() => { const inp = mod.parse(b, m, Object.fromEntries(m.params.map((x) => [x.id, x.default]))); const p = Object.fromEntries(m.params.map((x) => [x.id, x.default])); const res = mod.solve(inp, m, p); res._names = res._names ?? inp.names; return [inp, res, m, p]; })()), 2);
+			const pr = await preparePrint(out.sheet);
+			same ? pass++ : fail++;
+			log(`${same ? 'PASS' : 'FAIL'} saveload ${mid}.${m.id}: roundtrip ${same}, print landscape=${pr.landscape}`);
+		} catch (e) { fail++; log(`FAIL saveload ${mid}: ${e && e.message}`); }
+	}
+	log(`=== done: saveload ${pass} pass, ${fail} fail`);
+}
+
 export async function runSelfTest(filter = []) {
+	if (filter.includes('saveload')) {
+		let blank = false; try { blank = await isBlankWorkbook(); } catch { /* */ }
+		if (!blank) { log('SKIP: workbook is not blank'); return { pass: 0, fail: 0, skipped: true }; }
+		await saveLoadTest(); return { pass: 0, fail: 0 };
+	}
+	if (filter.includes('export-probe')) { await probeExport(); log('=== done: export-probe'); return { pass: 0, fail: 0 }; }
 	if (filter.includes('shapes-probe')) { await probeShapes(); log('=== done: probe'); return { pass: 0, fail: 0 }; }
 	log('self-test loaded');
 	let blank = false;
