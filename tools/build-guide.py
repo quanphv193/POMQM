@@ -87,7 +87,7 @@ NOTE('Mẹo: nếu không thấy mục “Developer Add-ins”, hãy thoát hẳ
 
 d.add_heading('3b. Cài đặt trên Windows', 1)
 P('Bản Windows dùng gói riêng “OMQM-Lite-Windows”. Add-in được tải từ https://quanphv193.github.io/POMQM/ nên máy cần có internet; dữ liệu và phép tính vẫn nằm trên máy bạn.')
-N('Giải nén file zip. Bấm đúp **Cai-dat-Windows.bat** (nếu SmartScreen cảnh báo: More info → Run anyway).')
+N('Giải nén file zip. Bấm **chuột phải** vào **Cai-dat-Windows.bat** → **Run as administrator** (nếu SmartScreen cảnh báo: More info → Run anyway). Nếu file tải về bị chặn: chuột phải file .zip → Properties → tick Unblock → OK, rồi mới giải nén.')
 N('Khi hộp thoại quyền quản trị (UAC) hiện ra, bấm **Yes**. Bước này chỉ để tạo một thư mục chia sẻ chứa file khai báo add-in.')
 N('Thoát hẳn Excel rồi mở lại.')
 N('Trong Excel: **Insert → Add-ins → My Add-ins → tab SHARED FOLDER → OM/QM Lite → Add**. Nút OM/QM Lite hiện trên tab Home.')
